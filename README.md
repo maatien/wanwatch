@@ -27,22 +27,26 @@ EXTERNAL_IP="1.1.1.1"
 INTERVAL=1
 TIMEOUT=3
 MIN_OUTAGE_DURATION=5
+CONTINUES_INTERVAL=60
+LOG_RETENTION_DAYS=14
 ```
 
-`MIN_OUTAGE_DURATION` is the minimum outage duration, in seconds, that must be exceeded before the script writes outage log entries. With the default value of `5`, outages lasting `5` seconds or less are ignored; only outages with a duration greater than `5` seconds are logged. Set it to `0` if you want to log every detected outage.
+`MIN_OUTAGE_DURATION` is the minimum outage duration in seconds that must be exceeded before anything is logged. With the default of `5`, outages of 5 seconds or less are silently discarded.
+
+`CONTINUES_INTERVAL` controls how often a still-ongoing outage is re-logged (in seconds). With the default of `60`, one `OUTAGE_CONTINUES` line is written per minute per affected target during a prolonged outage.
 
 You should replace `VODAFONE_HOP` with the first hop after your FritzBox, usually found using `traceroute`.
 
-## Files created on the UniFi device
+## Files created
 
-The script writes logs to:
+The script writes daily-rotated log files to `LOG_DIR` (default `/data/wanwatch/logs`):
 
 ```text
-/data/wanwatch/logs/wan-outages.log
-/data/wanwatch/logs/wan-outages.csv
+wan-outages-YYYY-MM-DD.log
+wan-outages-YYYY-MM-DD.csv
 ```
 
-`/data` is commonly used as a persistent location on UniFi OS devices.
+Files older than `LOG_RETENTION_DAYS` (default 14) are deleted automatically. On UniFi OS, `/data` is the standard persistent location that survives firmware updates.
 
 ## Installation
 
@@ -93,7 +97,7 @@ Start the script manually:
 Watch the log in another SSH session:
 
 ```sh
-tail -f /data/wanwatch/logs/wan-outages.log
+tail -f /data/wanwatch/logs/wan-outages-$(date '+%Y-%m-%d').log
 ```
 
 Stop the test with `CTRL+C`. The script handles `INT`, `TERM`, and `EXIT` signals and stops all background worker processes cleanly.
@@ -105,10 +109,11 @@ The script starts one main process and four background processes.
 Example:
 
 ```text
-1x main wanwatch.sh process
+1x main wanwatch.sh process (watchdog loop)
 3x worker wanwatch.sh processes (one per monitored target)
 1x purge wanwatch.sh process (daily log rotation)
 3x sleep 1 processes (worker intervals)
+1x sleep 30 process (watchdog interval)
 1x sleep 86400 process (purge interval)
 ```
 
@@ -159,7 +164,7 @@ systemctl status wanwatch.service
 Follow the log:
 
 ```sh
-tail -f /data/wanwatch/logs/wan-outages.log
+tail -f /data/wanwatch/logs/wan-outages-$(date '+%Y-%m-%d').log
 ```
 
 ## Example log output
@@ -170,8 +175,8 @@ tail -f /data/wanwatch/logs/wan-outages.log
 2026-05-13 14:03:18 worker started target=VODAFONE_HOP ip=83.xxx.xxx.xxx pid=1122956
 2026-05-13 14:03:18 worker started target=EXTERNAL ip=1.1.1.1 pid=1122958
 2026-05-13 14:05:28 OUTAGE_START target=VODAFONE_HOP ip=83.xxx.xxx.xxx duration=6s timeout>3s threshold>5s
-2026-05-13 14:05:31 OUTAGE_CONTINUES target=VODAFONE_HOP ip=83.xxx.xxx.xxx duration=9s
-2026-05-13 14:05:33 OUTAGE_END target=VODAFONE_HOP ip=83.xxx.xxx.xxx duration=11s
+2026-05-13 14:06:28 OUTAGE_CONTINUES target=VODAFONE_HOP ip=83.xxx.xxx.xxx duration=66s
+2026-05-13 14:06:45 OUTAGE_END target=VODAFONE_HOP ip=83.xxx.xxx.xxx duration=83s
 ```
 
 ## CSV output
