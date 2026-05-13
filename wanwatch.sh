@@ -35,6 +35,7 @@ purge_old_logs() {
 }
 
 purge_loop() {
+  trap - INT TERM EXIT
   while true; do
     purge_old_logs
     sleep 86400
@@ -51,6 +52,7 @@ log_outage_start() {
 }
 
 cleanup() {
+  trap - INT TERM EXIT
   log_text "wanwatch stopping"
 
   for PID in $PIDS; do
@@ -66,6 +68,7 @@ cleanup() {
 trap cleanup INT TERM EXIT
 
 check_target() {
+  trap - INT TERM EXIT
   NAME="$1"
   IP="$2"
 
