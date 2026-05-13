@@ -100,17 +100,19 @@ Stop the test with `CTRL+C`. The script handles `INT`, `TERM`, and `EXIT` signal
 
 ## Expected process structure
 
-The script starts one main process and three worker processes, one for each monitored target.
+The script starts one main process and four background processes.
 
 Example:
 
 ```text
 1x main wanwatch.sh process
-3x worker wanwatch.sh processes
-3x sleep 1 processes
+3x worker wanwatch.sh processes (one per monitored target)
+1x purge wanwatch.sh process (daily log rotation)
+3x sleep 1 processes (worker intervals)
+1x sleep 86400 process (purge interval)
 ```
 
-This is normal. The daemon is not necessarily starting the script multiple times; the script itself runs the checks in parallel.
+This is normal. The daemon is not starting the script multiple times; the script itself runs the checks in parallel.
 
 You can inspect this with:
 
