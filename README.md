@@ -54,17 +54,15 @@ cp wanwatch.sh /data/wanwatch/wanwatch.sh
 chmod +x /data/wanwatch/wanwatch.sh
 ```
 
-Edit the target IPs:
+Instead of editing `wanwatch.sh` directly, create a config file so your local values survive `git pull`:
 
 ```sh
-vi /data/wanwatch/wanwatch.sh
+cat > /data/wanwatch/wanwatch.conf <<'EOF'
+VODAFONE_HOP="83.135.22.1"
+EOF
 ```
 
-At minimum, replace:
-
-```sh
-VODAFONE_HOP="83.xxx.xxx.xxx"
-```
+Any variable from the top of `wanwatch.sh` can be overridden this way. At minimum, set `VODAFONE_HOP` to the first provider-side hop reported by `traceroute`.
 
 ## Find the first Vodafone hop
 
