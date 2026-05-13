@@ -4,8 +4,8 @@ FRITZBOX_IP="192.168.178.1"
 VODAFONE_HOP="83.xxx.xxx.xxx"
 EXTERNAL_IP="1.1.1.1"
 
-LOG="/data/wanwatch/logs/wan-outages.log"
-CSV="/data/wanwatch/logs/wan-outages.csv"
+LOG_DIR="/data/wanwatch/logs"
+LOG_RETENTION_DAYS=14
 
 INTERVAL=1
 TIMEOUT=3
@@ -13,16 +13,28 @@ MIN_OUTAGE_DURATION=5
 
 PIDS=""
 
-mkdir -p /data/wanwatch/logs
-
-[ -f "$CSV" ] || echo "timestamp,event,target,duration_seconds,result" >> "$CSV"
+mkdir -p "$LOG_DIR"
 
 log_text() {
-  echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG"
+  echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG_DIR/wan-outages-$(date '+%Y-%m-%d').log"
 }
 
 log_csv() {
-  echo "$(date '+%Y-%m-%d %H:%M:%S'),$1,$2,$3,$4" >> "$CSV"
+  _csv="$LOG_DIR/wan-outages-$(date '+%Y-%m-%d').csv"
+  [ -f "$_csv" ] || echo "timestamp,event,target,duration_seconds,result" >> "$_csv"
+  echo "$(date '+%Y-%m-%d %H:%M:%S'),$1,$2,$3,$4" >> "$_csv"
+}
+
+purge_old_logs() {
+  find "$LOG_DIR" -name "wan-outages-*.log" -mtime "+$LOG_RETENTION_DAYS" -delete 2>/dev/null
+  find "$LOG_DIR" -name "wan-outages-*.csv" -mtime "+$LOG_RETENTION_DAYS" -delete 2>/dev/null
+}
+
+purge_loop() {
+  while true; do
+    purge_old_logs
+    sleep 86400
+  done
 }
 
 log_outage_start() {
@@ -104,6 +116,9 @@ check_target() {
 }
 
 log_text "wanwatch started pid=$$"
+
+purge_loop &
+PIDS="$PIDS $!"
 
 check_target "FRITZBOX" "$FRITZBOX_IP" &
 PIDS="$PIDS $!"
