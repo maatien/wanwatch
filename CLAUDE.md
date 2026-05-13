@@ -50,7 +50,15 @@ Daily rotation is handled by embedding the date in filenames (`wan-outages-YYYY-
 
 ## Configuration
 
-All tunables are at the top of `wanwatch.sh`:
+Defaults live at the top of `wanwatch.sh`. To override without modifying the tracked file, create `wanwatch.conf` in the same directory — it is sourced after the defaults and is git-ignored:
+
+```sh
+# /data/wanwatch/wanwatch.conf
+VODAFONE_HOP="83.135.22.1"
+MIN_OUTAGE_DURATION=3
+```
+
+All tunables:
 
 | Variable | Default | Purpose |
 |---|---|---|

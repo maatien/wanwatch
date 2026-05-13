@@ -11,6 +11,10 @@ INTERVAL=1
 TIMEOUT=3
 MIN_OUTAGE_DURATION=5
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
+[ -f "$SCRIPT_DIR/wanwatch.conf" ] && . "$SCRIPT_DIR/wanwatch.conf"
+
 PIDS=""
 
 mkdir -p "$LOG_DIR"

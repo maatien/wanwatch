@@ -1,3 +1,6 @@
+# Local config overrides
+wanwatch.conf
+
 # Runtime logs
 logs/
 *.log
