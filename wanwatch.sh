@@ -10,6 +10,7 @@ LOG_RETENTION_DAYS=14
 INTERVAL=1
 TIMEOUT=3
 MIN_OUTAGE_DURATION=5
+CONTINUES_INTERVAL=60
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
@@ -20,13 +21,15 @@ PIDS=""
 mkdir -p "$LOG_DIR"
 
 log_text() {
-  echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG_DIR/wan-outages-$(date '+%Y-%m-%d').log"
+  _now="$(date '+%Y-%m-%d %H:%M:%S')"
+  echo "$_now $*" >> "$LOG_DIR/wan-outages-${_now%% *}.log"
 }
 
 log_csv() {
-  _csv="$LOG_DIR/wan-outages-$(date '+%Y-%m-%d').csv"
+  _now="$(date '+%Y-%m-%d %H:%M:%S')"
+  _csv="$LOG_DIR/wan-outages-${_now%% *}.csv"
   [ -f "$_csv" ] || echo "timestamp,event,target,duration_seconds,result" >> "$_csv"
-  echo "$(date '+%Y-%m-%d %H:%M:%S'),$1,$2,$3,$4" >> "$_csv"
+  echo "$_now,$1,$2,$3,$4" >> "$_csv"
 }
 
 purge_old_logs() {
@@ -75,11 +78,12 @@ check_target() {
   START=""
   IN_OUTAGE=0
   OUTAGE_LOGGED=0
+  LAST_CONTINUES_TS=0
 
   log_text "worker started target=$NAME ip=$IP pid=$$"
 
   while true; do
-    if ping -c 1 -W "$TIMEOUT" "$IP" >/dev/null 2>&1; then
+    if timeout $((TIMEOUT + 2)) ping -c 1 -W "$TIMEOUT" "$IP" >/dev/null 2>&1; then
       if [ "$IN_OUTAGE" -eq 1 ]; then
         END_TS=$(date +%s)
         DURATION=$((END_TS - START))
@@ -111,8 +115,10 @@ check_target() {
           if [ "$OUTAGE_LOGGED" -eq 0 ]; then
             log_outage_start "$NAME" "$IP" "$DURATION"
             OUTAGE_LOGGED=1
-          else
+            LAST_CONTINUES_TS="$NOW_TS"
+          elif [ $((NOW_TS - LAST_CONTINUES_TS)) -ge "$CONTINUES_INTERVAL" ]; then
             log_text "OUTAGE_CONTINUES target=$NAME ip=$IP duration=${DURATION}s"
+            LAST_CONTINUES_TS="$NOW_TS"
           fi
         fi
       fi
@@ -136,4 +142,12 @@ PIDS="$PIDS $!"
 check_target "EXTERNAL" "$EXTERNAL_IP" &
 PIDS="$PIDS $!"
 
-wait
+while true; do
+  sleep 30
+  for PID in $PIDS; do
+    if ! kill -0 "$PID" 2>/dev/null; then
+      log_text "ERROR worker pid=$PID exited unexpectedly"
+      cleanup
+    fi
+  done
+done

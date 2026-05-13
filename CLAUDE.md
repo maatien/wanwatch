@@ -68,6 +68,7 @@ All tunables:
 | `INTERVAL` | `1` | Seconds between pings per worker |
 | `TIMEOUT` | `3` | `ping -W` timeout in seconds |
 | `MIN_OUTAGE_DURATION` | `5` | Minimum outage duration to log (seconds) |
+| `CONTINUES_INTERVAL` | `60` | Seconds between repeated `OUTAGE_CONTINUES` log entries |
 | `LOG_RETENTION_DAYS` | `14` | Days before log files are purged |
 
 ## Deployment target
