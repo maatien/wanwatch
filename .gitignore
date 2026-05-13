@@ -1,0 +1,10 @@
+# Runtime logs
+logs/
+*.log
+*.csv
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
