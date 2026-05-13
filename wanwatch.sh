@@ -12,13 +12,21 @@ TIMEOUT=3
 MIN_OUTAGE_DURATION=5
 CONTINUES_INTERVAL=60
 
+START_TS=$(date +%s)
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 [ -f "$SCRIPT_DIR/wanwatch.conf" ] && . "$SCRIPT_DIR/wanwatch.conf"
 
 PIDS=""
+TOTAL_PIDS=0
 
 mkdir -p "$LOG_DIR"
+
+notify_status() {
+  command -v systemd-notify >/dev/null 2>&1 && systemd-notify --status="$*" 2>/dev/null
+  return 0
+}
 
 log_text() {
   _now="$(date '+%Y-%m-%d %H:%M:%S')"
@@ -131,23 +139,37 @@ check_target() {
 log_text "wanwatch started pid=$$"
 
 purge_loop &
-PIDS="$PIDS $!"
+PIDS="$PIDS $!"; TOTAL_PIDS=$((TOTAL_PIDS + 1))
 
 check_target "FRITZBOX" "$FRITZBOX_IP" &
-PIDS="$PIDS $!"
+PIDS="$PIDS $!"; TOTAL_PIDS=$((TOTAL_PIDS + 1))
 
 check_target "VODAFONE_HOP" "$VODAFONE_HOP" &
-PIDS="$PIDS $!"
+PIDS="$PIDS $!"; TOTAL_PIDS=$((TOTAL_PIDS + 1))
 
 check_target "EXTERNAL" "$EXTERNAL_IP" &
-PIDS="$PIDS $!"
+PIDS="$PIDS $!"; TOTAL_PIDS=$((TOTAL_PIDS + 1))
+
+notify_status "${TOTAL_PIDS}/${TOTAL_PIDS} processes active"
 
 while true; do
   sleep 30
+  alive=0
+  dead_pid=""
   for PID in $PIDS; do
-    if ! kill -0 "$PID" 2>/dev/null; then
-      log_text "ERROR worker pid=$PID exited unexpectedly"
-      cleanup
+    if kill -0 "$PID" 2>/dev/null; then
+      alive=$((alive + 1))
+    else
+      dead_pid="$PID"
     fi
   done
+
+  if [ -n "$dead_pid" ]; then
+    log_text "ERROR worker pid=$dead_pid exited unexpectedly"
+    notify_status "ERROR: worker pid=$dead_pid died, restarting"
+    cleanup
+  fi
+
+  uptime_s=$(( $(date +%s) - START_TS ))
+  notify_status "${alive}/${TOTAL_PIDS} processes active | uptime $((uptime_s / 60))m"
 done

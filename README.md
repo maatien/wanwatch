@@ -141,6 +141,7 @@ Type=simple
 ExecStart=/data/wanwatch/wanwatch.sh
 Restart=always
 RestartSec=5
+NotifyAccess=main
 
 [Install]
 WantedBy=multi-user.target
@@ -257,7 +258,7 @@ sudo mkdir -p /var/log/wanwatch
 
 The systemd service file works identically — adjust the `ExecStart` path:
 
-```sh
+```ini
 ExecStart=/opt/wanwatch/wanwatch.sh
 ```
 
