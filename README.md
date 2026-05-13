@@ -26,7 +26,10 @@ EXTERNAL_IP="1.1.1.1"
 
 INTERVAL=1
 TIMEOUT=3
+MIN_OUTAGE_DURATION=5
 ```
+
+`MIN_OUTAGE_DURATION` is the minimum outage duration, in seconds, that must be exceeded before the script writes outage log entries. With the default value of `5`, outages lasting `5` seconds or less are ignored; only outages with a duration greater than `5` seconds are logged. Set it to `0` if you want to log every detected outage.
 
 You should replace `VODAFONE_HOP` with the first hop after your FritzBox, usually found using `traceroute`.
 
@@ -166,8 +169,9 @@ tail -f /data/wanwatch/logs/wan-outages.log
 2026-05-13 14:03:18 worker started target=FRITZBOX ip=192.168.178.1 pid=1122955
 2026-05-13 14:03:18 worker started target=VODAFONE_HOP ip=83.xxx.xxx.xxx pid=1122956
 2026-05-13 14:03:18 worker started target=EXTERNAL ip=1.1.1.1 pid=1122958
-2026-05-13 14:05:22 OUTAGE_START target=VODAFONE_HOP ip=83.xxx.xxx.xxx timeout>3s
-2026-05-13 14:05:25 OUTAGE_END target=VODAFONE_HOP ip=83.xxx.xxx.xxx duration=3s
+2026-05-13 14:05:28 OUTAGE_START target=VODAFONE_HOP ip=83.xxx.xxx.xxx duration=6s timeout>3s threshold>5s
+2026-05-13 14:05:31 OUTAGE_CONTINUES target=VODAFONE_HOP ip=83.xxx.xxx.xxx duration=9s
+2026-05-13 14:05:33 OUTAGE_END target=VODAFONE_HOP ip=83.xxx.xxx.xxx duration=11s
 ```
 
 ## CSV output
@@ -176,8 +180,8 @@ The CSV file can be used for later analysis or as documentation for the ISP:
 
 ```csv
 timestamp,event,target,duration_seconds,result
-2026-05-13 14:05:22,OUTAGE_START,VODAFONE_HOP/83.xxx.xxx.xxx,0,timeout>3s
-2026-05-13 14:05:25,OUTAGE_END,VODAFONE_HOP/83.xxx.xxx.xxx,3,recovered
+2026-05-13 14:05:28,OUTAGE_START,VODAFONE_HOP/83.xxx.xxx.xxx,6,timeout>3s threshold>5s
+2026-05-13 14:05:33,OUTAGE_END,VODAFONE_HOP/83.xxx.xxx.xxx,11,recovered
 ```
 
 ## Interpretation

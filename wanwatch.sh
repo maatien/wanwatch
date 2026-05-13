@@ -9,6 +9,7 @@ CSV="/data/wanwatch/logs/wan-outages.csv"
 
 INTERVAL=1
 TIMEOUT=3
+MIN_OUTAGE_DURATION=5
 
 PIDS=""
 
@@ -22,6 +23,15 @@ log_text() {
 
 log_csv() {
   echo "$(date '+%Y-%m-%d %H:%M:%S'),$1,$2,$3,$4" >> "$CSV"
+}
+
+log_outage_start() {
+  NAME="$1"
+  IP="$2"
+  DURATION="$3"
+
+  log_text "OUTAGE_START target=$NAME ip=$IP duration=${DURATION}s timeout>${TIMEOUT}s threshold>${MIN_OUTAGE_DURATION}s"
+  log_csv "OUTAGE_START" "$NAME/$IP" "$DURATION" "timeout>${TIMEOUT}s threshold>${MIN_OUTAGE_DURATION}s"
 }
 
 cleanup() {
@@ -45,6 +55,7 @@ check_target() {
 
   START=""
   IN_OUTAGE=0
+  OUTAGE_LOGGED=0
 
   log_text "worker started target=$NAME ip=$IP pid=$$"
 
@@ -54,10 +65,17 @@ check_target() {
         END_TS=$(date +%s)
         DURATION=$((END_TS - START))
 
-        log_text "OUTAGE_END target=$NAME ip=$IP duration=${DURATION}s"
-        log_csv "OUTAGE_END" "$NAME/$IP" "$DURATION" "recovered"
+        if [ "$DURATION" -gt "$MIN_OUTAGE_DURATION" ]; then
+          if [ "$OUTAGE_LOGGED" -eq 0 ]; then
+            log_outage_start "$NAME" "$IP" "$DURATION"
+          fi
+
+          log_text "OUTAGE_END target=$NAME ip=$IP duration=${DURATION}s"
+          log_csv "OUTAGE_END" "$NAME/$IP" "$DURATION" "recovered"
+        fi
 
         IN_OUTAGE=0
+        OUTAGE_LOGGED=0
         START=""
       fi
     else
@@ -66,12 +84,18 @@ check_target() {
       if [ "$IN_OUTAGE" -eq 0 ]; then
         START="$NOW_TS"
         IN_OUTAGE=1
-
-        log_text "OUTAGE_START target=$NAME ip=$IP timeout>${TIMEOUT}s"
-        log_csv "OUTAGE_START" "$NAME/$IP" "0" "timeout>${TIMEOUT}s"
+        OUTAGE_LOGGED=0
       else
         DURATION=$((NOW_TS - START))
-        log_text "OUTAGE_CONTINUES target=$NAME ip=$IP duration=${DURATION}s"
+
+        if [ "$DURATION" -gt "$MIN_OUTAGE_DURATION" ]; then
+          if [ "$OUTAGE_LOGGED" -eq 0 ]; then
+            log_outage_start "$NAME" "$IP" "$DURATION"
+            OUTAGE_LOGGED=1
+          else
+            log_text "OUTAGE_CONTINUES target=$NAME ip=$IP duration=${DURATION}s"
+          fi
+        fi
       fi
     fi
 
