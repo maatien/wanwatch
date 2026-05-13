@@ -1,8 +1,8 @@
 # wanwatch
 
-`wanwatch` is a small shell-based WAN outage monitor for UniFi OS devices such as the UDR / UDR7. It continuously checks connectivity to three targets and logs short internet dropouts/timeouts, especially useful for documenting intermittent Vodafone cable issues.
+`wanwatch` is a small shell-based WAN outage monitor. It continuously checks connectivity to three targets and logs short internet dropouts/timeouts, especially useful for documenting intermittent Vodafone cable issues.
 
-The script was designed for a setup where a UniFi Dream Router is connected directly behind a cable FritzBox.
+The script was designed for a setup where a UniFi Dream Router is connected directly behind a cable FritzBox, but it runs on any Linux system with `sh`, `ping`, and `timeout` available (including Raspberry Pi OS and Ubuntu).
 
 ## What it monitors
 
@@ -231,6 +231,29 @@ Remove script and logs:
 
 ```sh
 rm -rf /data/wanwatch
+```
+
+## Running on Raspberry Pi / Ubuntu
+
+The script runs without modification. The only required change is the log directory, since `/data/wanwatch` is a UniFi OS convention. Set `LOG_DIR` in `wanwatch.conf`:
+
+```sh
+mkdir -p /opt/wanwatch
+cp wanwatch.sh /opt/wanwatch/wanwatch.sh
+chmod +x /opt/wanwatch/wanwatch.sh
+
+cat > /opt/wanwatch/wanwatch.conf <<'EOF'
+LOG_DIR="/var/log/wanwatch"
+VODAFONE_HOP="83.135.22.1"
+EOF
+
+sudo mkdir -p /var/log/wanwatch
+```
+
+The systemd service file works identically — adjust the `ExecStart` path:
+
+```sh
+ExecStart=/opt/wanwatch/wanwatch.sh
 ```
 
 ## Notes
